@@ -1,0 +1,45 @@
+"""
+This module defines the cloud run command tree for the Decision CLI.
+"""
+
+import typer
+
+from decision.cli.cloud.run.cancel import app as cancel_app
+from decision.cli.cloud.run.clone import app as clone_app
+from decision.cli.cloud.run.compare import app as compare_app
+from decision.cli.cloud.run.create import app as create_app
+from decision.cli.cloud.run.delete import app as delete_app
+from decision.cli.cloud.run.get import app as get_app
+from decision.cli.cloud.run.information import app as information_app
+from decision.cli.cloud.run.input import app as input_app
+from decision.cli.cloud.run.list import app as list_app
+from decision.cli.cloud.run.logs import app as logs_app
+from decision.cli.cloud.run.metadata import app as metadata_app
+from decision.cli.cloud.run.track import app as track_app
+
+# Set up subcommand application.
+app = typer.Typer()
+app.add_typer(cancel_app)
+app.add_typer(clone_app)
+app.add_typer(compare_app)
+app.add_typer(create_app)
+app.add_typer(delete_app)
+app.add_typer(get_app)
+app.add_typer(information_app)
+app.add_typer(input_app)
+app.add_typer(list_app)
+app.add_typer(logs_app)
+app.add_typer(metadata_app)
+app.add_typer(track_app)
+
+
+@app.callback()
+def callback() -> None:
+    """
+    Create and manage Decision Cloud application runs.
+
+    A run represents the execution of a decision model within a Decision Cloud
+    application. Each run takes an input, processes it using the decision model,
+    and produces an output.
+    """
+    pass

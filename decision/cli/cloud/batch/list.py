@@ -1,0 +1,74 @@
+"""
+This module defines the cloud batch list command for the Decision CLI.
+"""
+
+import json
+from typing import Annotated
+
+import typer
+
+from decision.cli.configuration.config import build_cloud_app
+from decision.cli.message import in_progress, print_json, success
+from decision.cli.options import AppIDOption, DebugOption, NoPaginationOption, ProfileOption
+
+# Set up subcommand application.
+app = typer.Typer()
+
+
+@app.command()
+def list(
+    app_id: AppIDOption,
+    no_pagination: NoPaginationOption = False,
+    output: Annotated[
+        str | None,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Saves the list of batch experiments to this location.",
+            metavar="OUTPUT_PATH",
+        ),
+    ] = None,
+    _: DebugOption = False,
+    profile: ProfileOption = None,
+) -> None:
+    """
+    List all Decision Cloud batch experiments for an application.
+
+    This command retrieves all batch experiments associated with the specified
+    application. By default this command paginates the list of experiments,
+    which means multiple API calls may be made to retrieve all experiments. You
+    may use the --no-pagination option to disable pagination.
+
+    [bold][underline]Examples[/underline][/bold]
+
+    - List all batch experiments for application [magenta]hare-app[/magenta].
+
+        $ [dim]decision cloud batch list --app-id hare-app[/dim]
+
+    - List all batch experiments and save to a file.
+
+        $ [dim]decision cloud batch list --app-id hare-app --output experiments.json[/dim]
+
+    - List all batch experiments using a specific profile.
+
+        $ [dim]decision cloud batch list --app-id hare-app --profile prod[/dim]
+
+    - List all experiments without pagination.
+
+        $ [dim]decision cloud batch list --app-id hare-app --no-pagination[/dim]
+    """
+
+    cloud_app, _ = build_cloud_app(app_id=app_id, profile=profile)
+    in_progress(msg="Listing batch experiments...")
+    batch_experiments = cloud_app.list_batch_experiments(no_pagination)
+    batch_experiments_dict = [exp.to_dict() for exp in batch_experiments]
+
+    if output is not None and output != "":
+        with open(output, "w") as f:
+            json.dump(batch_experiments_dict, f, indent=2)
+
+        success(msg=f"Batch experiments list saved to [magenta]{output}[/magenta].")
+
+        return
+
+    print_json(batch_experiments_dict)

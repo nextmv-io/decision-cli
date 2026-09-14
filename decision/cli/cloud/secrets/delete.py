@@ -1,0 +1,56 @@
+"""
+This module defines the cloud secrets delete command for the Decision CLI.
+"""
+
+import typer
+
+from decision.cli.configuration.config import build_cloud_app
+from decision.cli.message import confirmation, info, success
+from decision.cli.options import AppIDOption, DebugOption, ProfileOption, SecretsCollectionIDOption, YesOption
+
+# Set up subcommand application.
+app = typer.Typer()
+
+
+@app.command()
+def delete(
+    app_id: AppIDOption,
+    secrets_collection_id: SecretsCollectionIDOption,
+    yes: YesOption = False,
+    _: DebugOption = False,
+    profile: ProfileOption = None,
+) -> None:
+    """
+    Deletes a Decision Cloud secrets collection.
+
+    This action is permanent and cannot be undone. Use the --yes
+    flag to skip the confirmation prompt.
+
+    [bold][underline]Examples[/underline][/bold]
+
+    - Delete the secrets collection with the ID [magenta]api-keys[/magenta] from application
+      [magenta]hare-app[/magenta].
+
+        $ [dim]decision cloud secrets delete --app-id hare-app --secrets-collection-id api-keys[/dim]
+
+    - Delete the secrets collection without confirmation prompt.
+
+        $ [dim]decision cloud secrets delete --app-id hare-app --secrets-collection-id api-keys --yes[/dim]
+    """
+
+    if not yes:
+        confirm = confirmation(
+            f"Are you sure you want to delete secrets collection [magenta]{secrets_collection_id}[/magenta] "
+            f"from application [magenta]{app_id}[/magenta]? This action cannot be undone.",
+        )
+
+        if not confirm:
+            info(f"Secrets collection [magenta]{secrets_collection_id}[/magenta] will not be deleted.")
+            return
+
+    cloud_app, _ = build_cloud_app(app_id=app_id, profile=profile)
+    cloud_app.delete_secrets_collection(secrets_collection_id=secrets_collection_id)
+    success(
+        f"Secrets collection [magenta]{secrets_collection_id}[/magenta] deleted successfully "
+        f"from application [magenta]{app_id}[/magenta]."
+    )

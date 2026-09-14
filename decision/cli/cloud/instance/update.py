@@ -1,0 +1,239 @@
+"""
+This module defines the cloud instance update command for the Decision CLI.
+"""
+
+import json
+from typing import Annotated
+
+import typer
+from nextmv.content_format import ContentFormat
+from nextmv.input import InputFormat
+
+from decision.cli.cloud.instance.create import build_config, build_options
+from decision.cli.configuration.config import build_cloud_app
+from decision.cli.message import enum_values, error, in_progress, parse_content_format, print_json, success
+from decision.cli.options import AppIDOption, DebugOption, InstanceIDOption, ProfileOption
+
+# Set up subcommand application.
+app = typer.Typer()
+
+
+@app.command()
+def update(
+    app_id: AppIDOption,
+    instance_id: InstanceIDOption,
+    description: Annotated[
+        str | None,
+        typer.Option(
+            "--description",
+            "-d",
+            help="A new description for the instance.",
+            metavar="DESCRIPTION",
+        ),
+    ] = None,
+    locked: Annotated[
+        bool | None,
+        typer.Option(
+            "--locked/--unlocked",
+            help="Whether to lock or unlock the instance. If not provided, the locked status will not be updated.",
+        ),
+    ] = None,
+    name: Annotated[
+        str | None,
+        typer.Option(
+            "--name",
+            "-n",
+            help="A new name for the instance.",
+            metavar="NAME",
+        ),
+    ] = None,
+    output: Annotated[
+        str | None,
+        typer.Option(
+            "--output",
+            "-u",
+            help="Saves the updated instance information to this location.",
+            metavar="OUTPUT_PATH",
+        ),
+    ] = None,
+    version_id: Annotated[
+        str | None,
+        typer.Option(
+            "--version-id",
+            "-v",
+            help="Update the instance to use a different version.",
+            metavar="VERSION_ID",
+        ),
+    ] = None,
+    # Options for updating the instance configuration.
+    content_format: Annotated[
+        InputFormat | None,  # Keep deprecated type for backwards compatibility, translated in the code.
+        typer.Option(
+            "--content-format",
+            "-c",
+            help=f"The content format for the instance. Allowed values are: {enum_values(ContentFormat)}.",
+            metavar="CONTENT_FORMAT",
+            rich_help_panel="Instance configuration",
+        ),
+    ] = None,
+    execution_class: Annotated[
+        str | None,
+        typer.Option(
+            "--execution-class",
+            "-x",
+            help="The execution class to use for the instance.",
+            metavar="EXECUTION_CLASS",
+            rich_help_panel="Instance configuration",
+        ),
+    ] = None,
+    integration_id: Annotated[
+        str | None,
+        typer.Option(
+            "--integration-id",
+            help="The integration ID to use for the runs of the instance, if applicable.",
+            metavar="INTEGRATION_ID",
+            rich_help_panel="Instance configuration",
+        ),
+    ] = None,
+    no_queuing: Annotated[
+        bool | None,
+        typer.Option(
+            "--no-queuing/--yes-queuing",
+            help="Whether to queue when running the instance. "
+            "Default is [magenta]False[/magenta], meaning the instance's run [italic]will[/italic] be queued.",
+            rich_help_panel="Instance configuration",
+        ),
+    ] = None,
+    options: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--options",
+            "-o",
+            help="Options to always use when running the instance. Format: [magenta]key=value[/magenta]. "
+            "Pass multiple options by repeating the flag, or separating with commas.",
+            metavar="KEY=VALUE",
+            rich_help_panel="Instance configuration",
+        ),
+    ] = None,
+    priority: Annotated[
+        int | None,
+        typer.Option(
+            "--priority",
+            help="The priority of the runs in the instance. "
+            "Priority is between 1 and 9, with 1 being the highest priority.",
+            metavar="PRIORITY",
+            rich_help_panel="Instance configuration",
+        ),
+    ] = None,
+    secret_collection_id: Annotated[
+        str | None,
+        typer.Option(
+            "--secret-collection-id",
+            "-s",
+            help="The secret collection ID to use for the instance, if applicable.",
+            metavar="SECRET_COLLECTION_ID",
+            rich_help_panel="Instance configuration",
+        ),
+    ] = None,
+    _: DebugOption = False,
+    profile: ProfileOption = None,
+) -> None:
+    """
+    Updates a Decision Cloud application instance.
+
+    [bold][underline]Examples[/underline][/bold]
+
+    - Update an instance's name.
+
+        $ [dim]decision cloud instance update --app-id hare-app --instance-id prod --name "Production Instance"[/dim]
+
+    - Update an instance's description.
+
+        $ [dim]decision cloud instance update --app-id hare-app --instance-id prod \\
+            --description "Instance for production routing jobs"[/dim]
+
+    - Update an instance to use a different version.
+
+        $ [dim]decision cloud instance update --app-id hare-app --instance-id prod --version-id v2[/dim]
+
+    - Update an instance's name and description at once.
+
+        $ [dim]decision cloud instance update --app-id hare-app --instance-id prod \\
+            --name "Production Instance" --description "Instance for production routing jobs"[/dim]
+
+    - Update an instance and save the updated information to a [magenta]updated_instance.json[/magenta] file.
+
+        $ [dim]decision cloud instance update --app-id hare-app --instance-id prod \\
+            --name "Production Instance" --output updated_instance.json[/dim]
+
+    - Update an instance's execution class and priority.
+
+        $ [dim]decision cloud instance update --app-id hare-app --instance-id prod \\
+            --execution-class 6c9500mb870s --priority 1[/dim]
+
+    - Update an instance's runtime options.
+
+        $ [dim]decision cloud instance update --app-id hare-app --instance-id prod \\
+            --options max_duration=30 --options timeout=60[/dim]
+    """
+
+    content_format = parse_content_format(content_format)
+
+    # Check if any configuration options are provided
+    has_config_options = any(
+        [
+            content_format is not None,
+            execution_class is not None,
+            integration_id is not None,
+            no_queuing is not None,
+            options is not None,
+            priority is not None,
+            secret_collection_id is not None,
+        ]
+    )
+
+    if name is None and description is None and version_id is None and locked is None and not has_config_options:
+        error(
+            "Provide at least one option to update: --description, --locked/--unlocked, --name, "
+            "--version-id, or any [magenta]Instance configuration[/magenta] option."
+        )
+
+    cloud_app, _ = build_cloud_app(app_id=app_id, profile=profile)
+
+    # Build configuration if any configuration options were provided.
+    configuration = None
+    if has_config_options:
+        instance_options = build_options(options)
+        configuration = build_config(
+            priority=priority,
+            no_queuing=no_queuing,
+            content_format=content_format,
+            execution_class=execution_class,
+            integration_id=integration_id,
+            options=instance_options,
+            secret_collection_id=secret_collection_id,
+        )
+
+    in_progress(msg="Updating instance...")
+    updated_instance = cloud_app.update_instance(
+        id=instance_id,
+        name=name,
+        description=description,
+        version_id=version_id,
+        configuration=configuration,
+        locked=locked,
+    )
+    success(
+        f"Instance [magenta]{instance_id}[/magenta] updated successfully in application [magenta]{app_id}[/magenta]."
+    )
+    updated_instance_dict = updated_instance.to_dict()
+
+    if output is not None and output != "":
+        with open(output, "w") as f:
+            json.dump(updated_instance_dict, f, indent=2)
+
+        success(msg=f"Updated instance information saved to [magenta]{output}[/magenta].")
+
+        return
+
+    print_json(updated_instance_dict)

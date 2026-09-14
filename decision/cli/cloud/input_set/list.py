@@ -1,0 +1,74 @@
+"""
+This module defines the cloud input-set list command for the Decision CLI.
+"""
+
+import json
+from typing import Annotated
+
+import typer
+
+from decision.cli.configuration.config import build_cloud_app
+from decision.cli.message import in_progress, print_json, success
+from decision.cli.options import AppIDOption, DebugOption, NoPaginationOption, ProfileOption
+
+# Set up subcommand application.
+app = typer.Typer()
+
+
+@app.command()
+def list(
+    app_id: AppIDOption,
+    no_pagination: NoPaginationOption = False,
+    output: Annotated[
+        str | None,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Saves the input set list to this location.",
+            metavar="OUTPUT_PATH",
+        ),
+    ] = None,
+    _: DebugOption = False,
+    profile: ProfileOption = None,
+) -> None:
+    """
+    List all input sets of a Decision Cloud application.
+
+    This command retrieves all input sets that exist for a given Decision Cloud
+    application. By default this command paginates the list of input sets,
+    which means multiple API calls may be made to retrieve all input sets. You
+    may use the --no-pagination option to disable pagination.
+
+    [bold][underline]Examples[/underline][/bold]
+
+    - List all input sets of application [magenta]hare-app[/magenta].
+
+        $ [dim]decision cloud input-set list --app-id hare-app[/dim]
+
+    - List all input sets using the profile named [magenta]hare[/magenta].
+
+        $ [dim]decision cloud input-set list --app-id hare-app --profile hare[/dim]
+
+    - List all input sets and save the information to a [magenta]input-sets.json[/magenta] file.
+
+        $ [dim]decision cloud input-set list --app-id hare-app --output input-sets.json[/dim]
+
+    - List all input sets without pagination.
+
+        $ [dim]decision cloud input-set list --app-id hare-app --no-pagination[/dim]
+    """
+
+    cloud_app, _ = build_cloud_app(app_id=app_id, profile=profile)
+    in_progress(msg="Listing input sets...")
+    input_sets = cloud_app.list_input_sets(no_pagination)
+    input_sets_dicts = [input_set.to_dict() for input_set in input_sets]
+
+    if output is not None and output != "":
+        with open(output, "w") as f:
+            json.dump(input_sets_dicts, f, indent=2)
+
+        success(msg=f"Input set list information saved to [magenta]{output}[/magenta].")
+
+        return
+
+    print_json(input_sets_dicts)

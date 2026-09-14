@@ -1,0 +1,44 @@
+"""
+This module defines the cloud version exists command for the Decision CLI.
+"""
+
+import typer
+
+from decision.cli.configuration.config import build_cloud_app
+from decision.cli.message import in_progress, print_json
+from decision.cli.options import AppIDOption, DebugOption, ProfileOption, VersionIDOption
+
+# Set up subcommand application.
+app = typer.Typer()
+
+
+@app.command()
+def exists(
+    app_id: AppIDOption,
+    version_id: VersionIDOption,
+    _: DebugOption = False,
+    profile: ProfileOption = None,
+) -> None:
+    """
+    Check if a Decision Cloud application version exists.
+
+    This command is useful in scripting applications to verify the existence of
+    a Decision Cloud application version by its ID.
+
+    [bold][underline]Examples[/underline][/bold]
+
+    - Check if the version with the ID [magenta]v1[/magenta] exists in application [magenta]hare-app[/magenta].
+
+        $ [dim]decision cloud version exists --app-id hare-app --version-id v1[/dim]
+
+    - Check if the version exists using the profile named [magenta]hare[/magenta].
+
+        $ [dim]decision cloud version exists --app-id hare-app --version-id v1 --profile hare[/dim]
+    """
+
+    cloud_app, _ = build_cloud_app(app_id=app_id, profile=profile)
+    in_progress(msg="Checking if version exists...")
+    ok = cloud_app.version_exists(version_id=version_id)
+    print_json({"exists": ok})
+    if not ok:
+        raise typer.Exit(code=1)

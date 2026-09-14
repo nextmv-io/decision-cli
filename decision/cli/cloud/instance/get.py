@@ -1,0 +1,65 @@
+"""
+This module defines the cloud instance get command for the Decision CLI.
+"""
+
+import json
+from typing import Annotated
+
+import typer
+
+from decision.cli.configuration.config import build_cloud_app
+from decision.cli.message import in_progress, print_json, success
+from decision.cli.options import AppIDOption, DebugOption, InstanceIDOption, ProfileOption
+
+# Set up subcommand application.
+app = typer.Typer()
+
+
+@app.command()
+def get(
+    app_id: AppIDOption,
+    instance_id: InstanceIDOption,
+    output: Annotated[
+        str | None,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Saves the instance information to this location.",
+            metavar="OUTPUT_PATH",
+        ),
+    ] = None,
+    _: DebugOption = False,
+    profile: ProfileOption = None,
+) -> None:
+    """
+    Get a Decision Cloud application instance.
+
+    This command is useful to get the attributes of an existing Decision Cloud
+    application instance by its ID.
+
+    [bold][underline]Examples[/underline][/bold]
+
+    - Get the instance with the ID [magenta]prod[/magenta] from application [magenta]hare-app[/magenta].
+
+        $ [dim]decision cloud instance get --app-id hare-app --instance-id prod[/dim]
+
+    - Get the instance with the ID [magenta]prod[/magenta] and save the information to a
+      [magenta]instance.json[/magenta] file.
+
+        $ [dim]decision cloud instance get --app-id hare-app --instance-id prod --output instance.json[/dim]
+    """
+
+    cloud_app, _ = build_cloud_app(app_id=app_id, profile=profile)
+    in_progress(msg="Getting instance...")
+    instance = cloud_app.instance(instance_id=instance_id)
+    instance_dict = instance.to_dict()
+
+    if output is not None and output != "":
+        with open(output, "w") as f:
+            json.dump(instance_dict, f, indent=2)
+
+        success(msg=f"Instance information saved to [magenta]{output}[/magenta].")
+
+        return
+
+    print_json(instance_dict)

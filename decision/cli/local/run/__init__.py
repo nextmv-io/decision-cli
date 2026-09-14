@@ -1,0 +1,41 @@
+"""
+This module defines the local run command tree for the Decision CLI.
+"""
+
+import typer
+
+from decision.cli.local.run.clone import app as clone_app
+from decision.cli.local.run.compare import app as compare_app
+from decision.cli.local.run.create import app as create_app
+from decision.cli.local.run.get import app as get_app
+from decision.cli.local.run.information import app as information_app
+from decision.cli.local.run.input import app as input_app
+from decision.cli.local.run.list import app as list_app
+from decision.cli.local.run.logs import app as logs_app
+from decision.cli.local.run.metadata import app as metadata_app
+from decision.cli.local.run.visuals import app as visuals_app
+
+# Set up subcommand application.
+app = typer.Typer()
+app.add_typer(clone_app)
+app.add_typer(compare_app)
+app.add_typer(create_app)
+app.add_typer(get_app)
+app.add_typer(information_app)
+app.add_typer(input_app)
+app.add_typer(list_app)
+app.add_typer(logs_app)
+app.add_typer(metadata_app)
+app.add_typer(visuals_app)
+
+
+@app.callback()
+def callback() -> None:
+    """
+    Create and manage Decision local application runs.
+
+    A run represents the execution of a decision model within a Decision local
+    application. Each run takes an input, processes it using the decision model,
+    and produces an output.
+    """
+    pass

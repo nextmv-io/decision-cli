@@ -1,0 +1,34 @@
+"""
+This module defines the cloud sso command tree for the Decision CLI.
+"""
+
+import typer
+
+from decision.cli.cloud.sso.create import app as create_app
+from decision.cli.cloud.sso.delete import app as delete_app
+from decision.cli.cloud.sso.disable import app as disable_app
+from decision.cli.cloud.sso.domain import app as domain_app
+from decision.cli.cloud.sso.enable import app as enable_app
+from decision.cli.cloud.sso.get import app as get_app
+from decision.cli.cloud.sso.update import app as update_app
+
+# Set up subcommand application.
+app = typer.Typer()
+app.add_typer(create_app)
+app.add_typer(delete_app)
+app.add_typer(disable_app)
+app.add_typer(enable_app)
+app.add_typer(get_app)
+app.add_typer(update_app)
+app.add_typer(domain_app, name="domain")
+
+
+@app.callback()
+def callback() -> None:
+    """
+    Manage SSO for your Decision Cloud organization (account).
+
+    Please contact [link=https://www.nextmv.io/contact][bold]Decision support[/bold][/link]
+    for assistance configuring SSO for your organization.
+    """
+    pass

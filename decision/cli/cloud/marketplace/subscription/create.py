@@ -1,0 +1,57 @@
+"""
+This module defines the cloud marketplace subscription create command for the Decision CLI.
+"""
+
+from typing import Annotated
+
+import typer
+from nextmv.cloud.client import Client
+from nextmv.cloud.marketplace import MarketplaceSubscription
+
+from decision.cli.message import in_progress, print_json
+from decision.cli.options import DebugOption, ProfileOption
+
+# Set up subcommand application.
+app = typer.Typer()
+
+
+@app.command()
+def create(
+    subscription_id: Annotated[
+        str,
+        typer.Option(
+            "--subscription-id",
+            "-s",
+            help="The ID of the marketplace application and partner to subscribe to. "
+            "Format of the subscription ID: [dim]<PARTNER_ID>-<APP_ID>[/dim].",
+            envvar="NEXTMV_MARKETPLACE_SUBSCRIPTION_ID",
+            metavar="SUBSCRIPTION_ID",
+        ),
+    ],
+    _: DebugOption = False,
+    profile: ProfileOption = None,
+) -> None:
+    """
+    Create a new marketplace subscription.
+
+    Subscribe to a marketplace application by providing the subscription ID,
+    which combines the partner ID and application ID in the format
+    [magenta]<PARTNER_ID>-<APP_ID>[/magenta]. This allows you to access and use
+    the marketplace application in your account.
+
+    [bold][underline]Examples[/underline][/bold]
+
+    - Subscribe to a marketplace application.
+
+        $ [dim]decision cloud marketplace subscription create --subscription-id my-partner-marketplace-hare[/dim]
+
+    - Subscribe to a marketplace application using the profile named [magenta]hare[/magenta].
+
+        $ [dim]decision cloud marketplace subscription create --subscription-id my-partner-marketplace-hare \\
+            --profile hare[/dim]
+    """
+
+    client = Client(profile=profile)
+    in_progress(msg="Creating subscription...")
+    subscription = MarketplaceSubscription.new(client, subscription_id)
+    print_json(subscription.to_dict())

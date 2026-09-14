@@ -1,0 +1,57 @@
+"""
+This module defines the cloud shadow delete command for the Decision CLI.
+"""
+
+import typer
+
+from decision.cli.configuration.config import build_cloud_app
+from decision.cli.message import confirmation, info, success
+from decision.cli.options import AppIDOption, DebugOption, ProfileOption, ShadowTestIDOption, YesOption
+
+# Set up subcommand application.
+app = typer.Typer()
+
+
+@app.command()
+def delete(
+    app_id: AppIDOption,
+    shadow_test_id: ShadowTestIDOption,
+    yes: YesOption = False,
+    _: DebugOption = False,
+    profile: ProfileOption = None,
+) -> None:
+    """
+    Deletes a Decision Cloud shadow test.
+
+    This action is permanent and cannot be undone. The shadow test and all
+    associated data, including runs, will be deleted. Use the --yes
+    flag to skip the confirmation prompt.
+
+    [bold][underline]Examples[/underline][/bold]
+
+    - Delete the shadow test with the ID [magenta]hop-analysis[/magenta] from application
+      [magenta]hare-app[/magenta].
+
+        $ [dim]decision cloud shadow delete --app-id hare-app --shadow-test-id hop-analysis[/dim]
+
+    - Delete the shadow test without confirmation prompt.
+
+        $ [dim]decision cloud shadow delete --app-id hare-app --shadow-test-id carrot-routes --yes[/dim]
+    """
+
+    if not yes:
+        confirm = confirmation(
+            f"Are you sure you want to delete shadow test [magenta]{shadow_test_id}[/magenta] "
+            f"from application [magenta]{app_id}[/magenta]? This action cannot be undone.",
+        )
+
+        if not confirm:
+            info(f"Shadow test [magenta]{shadow_test_id}[/magenta] will not be deleted.")
+            return
+
+    cloud_app, _ = build_cloud_app(app_id=app_id, profile=profile)
+    cloud_app.delete_shadow_test(shadow_test_id=shadow_test_id)
+    success(
+        f"Shadow test [magenta]{shadow_test_id}[/magenta] deleted successfully "
+        f"from application [magenta]{app_id}[/magenta]."
+    )
